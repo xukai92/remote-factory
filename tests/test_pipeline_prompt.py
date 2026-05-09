@@ -81,6 +81,27 @@ class TestPipelineSkillStructure:
         assert re.search(r"\|\s*S\d+\s*\|", pipeline_skill), \
             "Pipeline skill should contain step table rows like '| S1 |'"
 
+    def test_has_tiered_examples(self, pipeline_skill):
+        assert "Easy" in pipeline_skill
+        assert "Medium" in pipeline_skill
+        assert "Hard" in pipeline_skill
+
+    def test_easy_example_is_short(self, pipeline_skill):
+        assert "lint" in pipeline_skill.lower()
+        assert "S3 | archivist" in pipeline_skill or "S3 |" in pipeline_skill
+
+    def test_hard_example_has_many_steps(self, pipeline_skill):
+        assert "S7" in pipeline_skill or "S8" in pipeline_skill
+
+    def test_has_evals(self):
+        evals_path = _SKILLS_DIR / "pipeline" / "evals" / "evals.json"
+        assert evals_path.exists()
+        import json
+        evals = json.loads(evals_path.read_text())
+        assert len(evals["evals"]) >= 3
+        difficulties = {e["difficulty"] for e in evals["evals"]}
+        assert {"easy", "medium", "hard"} <= difficulties
+
 
 class TestPipelineSubagentsSkillStructure:
     def test_exists(self):
@@ -138,3 +159,21 @@ class TestPipelineSubagentsSkillStructure:
 
     def test_mentions_failure_analyst(self, subagents_skill):
         assert "failure_analyst" in subagents_skill
+
+    def test_has_tiered_examples(self, subagents_skill):
+        assert "Easy" in subagents_skill
+        assert "Medium" in subagents_skill
+        assert "Hard" in subagents_skill
+
+    def test_easy_example_shows_agent_tool_syntax(self, subagents_skill):
+        assert "factory:evaluator" in subagents_skill
+        assert "factory:builder" in subagents_skill
+
+    def test_has_evals(self):
+        evals_path = _SKILLS_DIR / "pipeline-subagents" / "evals" / "evals.json"
+        assert evals_path.exists()
+        import json
+        evals = json.loads(evals_path.read_text())
+        assert len(evals["evals"]) >= 3
+        difficulties = {e["difficulty"] for e in evals["evals"]}
+        assert {"easy", "medium", "hard"} <= difficulties

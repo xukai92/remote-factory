@@ -1,0 +1,47 @@
+{
+  "skill_name": "pipeline-subagents",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Fix all lint warnings in this project",
+      "expected_output": "Pipeline with 2-3 steps using Agent tool: factory:evaluator (run linter), factory:builder (fix warnings), factory:archivist (background). Sequential execution.",
+      "difficulty": "easy",
+      "assertions": [
+        "Pipeline plan written to .factory/pipeline/plan.md",
+        "Uses factory:evaluator subagent",
+        "Uses factory:builder subagent",
+        "Archivist runs in background (run_in_background: true)",
+        "Calls factory emit for observability"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Research the authentication timeout bug and fix it",
+      "expected_output": "Pipeline with 5-6 steps: factory:researcher + factory:evaluator (parallel Agent calls in same message), factory:strategist, factory:builder, factory:reviewer, factory:archivist.",
+      "difficulty": "medium",
+      "assertions": [
+        "Pipeline plan written to .factory/pipeline/plan.md",
+        "Researcher and evaluator spawned as parallel Agent calls in same message",
+        "Strategist depends on both researcher and evaluator results",
+        "Persists reviews to .factory/reviews/",
+        "Calls factory emit before and after agent invocations",
+        "Gate rule after researcher checks for root cause identification"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Profile API latency, optimize the slowest endpoints, and validate the improvements",
+      "expected_output": "Pipeline with 7-8 steps: parallel profiling + baseline, strategist, builder-reviewer-evaluator loop, conditional second optimization, archivist. Uses parallel Agent calls and conditional logic.",
+      "difficulty": "hard",
+      "assertions": [
+        "Pipeline plan written to .factory/pipeline/plan.md",
+        "Researcher and evaluator in parallel (same message Agent calls)",
+        "Post-optimization evaluator compares to baseline",
+        "Conditional step (skip if regression detected)",
+        "At least 7 steps in the pipeline",
+        "Calls factory emit for observability",
+        "Persists reviews to .factory/reviews/"
+      ]
+    }
+  ]
+}

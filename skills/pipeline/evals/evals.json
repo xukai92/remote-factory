@@ -1,0 +1,48 @@
+{
+  "skill_name": "pipeline",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Fix all lint warnings in this project",
+      "expected_output": "Pipeline with 2-3 steps: evaluator (run linter), builder (fix warnings), archivist. No parallelism needed. Should check if already clean before building.",
+      "difficulty": "easy",
+      "assertions": [
+        "Pipeline plan written to .factory/pipeline/plan.md",
+        "Uses evaluator to run linter first",
+        "Uses builder to fix warnings",
+        "Includes archivist step",
+        "Gate rule checks if linter passes after fixes"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Research the authentication timeout bug and fix it",
+      "expected_output": "Pipeline with 5-6 steps: researcher + evaluator (parallel), strategist, builder, reviewer, archivist. Researcher identifies root cause, strategist generates hypothesis, builder implements fix.",
+      "difficulty": "medium",
+      "assertions": [
+        "Pipeline plan written to .factory/pipeline/plan.md",
+        "Researcher and evaluator run in parallel (both depend on nothing)",
+        "Strategist depends on both researcher and evaluator",
+        "Builder depends on strategist",
+        "Reviewer depends on builder",
+        "Gate rule after researcher checks for root cause identification",
+        "Gate rule after reviewer checks for guard violations"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Profile API latency, optimize the slowest endpoints, and validate the improvements",
+      "expected_output": "Pipeline with 7-8 steps: researcher (profile) + evaluator (baseline) parallel, strategist, builder + reviewer loop, evaluator (post), optional second builder, archivist. Includes before/after comparison.",
+      "difficulty": "hard",
+      "assertions": [
+        "Pipeline plan written to .factory/pipeline/plan.md",
+        "Researcher and evaluator run in parallel for profiling + baseline",
+        "Strategist produces ranked optimization hypotheses",
+        "Post-optimization evaluator compares to baseline",
+        "Gate rule after post-eval checks for regression",
+        "Archivist records before/after metrics",
+        "At least 7 steps in the pipeline"
+      ]
+    }
+  ]
+}

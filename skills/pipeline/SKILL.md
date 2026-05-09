@@ -103,3 +103,61 @@ Process steps in topological order:
 ### Final Summary
 
 Write `.factory/pipeline/summary.md` with goal, status, step results, and key findings.
+
+---
+
+## Reference Pipelines
+
+Use these as templates. Match your pipeline complexity to the goal.
+
+### Easy (2-3 steps) — "Fix all lint warnings"
+
+| Step | Role | Task Summary | Depends On |
+|------|------|-------------|-----------|
+| S1 | evaluator | Run `ruff check .` and report all warnings with file locations | - |
+| S2 | builder | Fix every warning from S1. Run `ruff check .` to verify clean. | S1 |
+| S3 | archivist | Archive: what was fixed, how many warnings resolved | S2 |
+
+**Gate rules:** After S1: PROCEED if warnings found; ABORT if already clean (nothing to do). After S2: PROCEED if `ruff check .` passes.
+
+No parallelism needed — each step depends on the previous.
+
+### Medium (5-6 steps) — "Research and fix the auth bug"
+
+| Step | Role | Task Summary | Depends On |
+|------|------|-------------|-----------|
+| S1 | researcher | Research the auth bug: read auth middleware, search for similar issues, check error logs | - |
+| S2 | evaluator | Run baseline eval to capture current scores | - |
+| S3 | strategist | Generate fix hypotheses from S1 research. Pick the most targeted fix. | S1, S2 |
+| S4 | builder | Implement the top hypothesis from S3 on a feature branch. Open PR. | S3 |
+| S5 | reviewer | Review the PR: check correctness, scope, test coverage | S4 |
+| S6 | archivist | Archive: root cause, fix approach, eval comparison | S5 |
+
+**Gate rules:**
+- After S1: PROCEED if root cause identified; REDIRECT if research is too shallow
+- After S3: PROCEED if hypothesis is specific and scoped to one PR
+- After S5: PROCEED if reviewer passes; ABORT if guard violations
+
+S1 and S2 run in parallel (both depend on nothing).
+
+### Hard (7-8 steps) — "Profile API latency, optimize, and validate"
+
+| Step | Role | Task Summary | Depends On |
+|------|------|-------------|-----------|
+| S1 | researcher | Profile all API endpoints: measure latency, identify the top 3 slowest, research optimization techniques for each | - |
+| S2 | evaluator | Run baseline eval, capture current scores and latency metrics | - |
+| S3 | strategist | Rank optimizations by expected impact. Produce one hypothesis per slow endpoint, prioritized. | S1, S2 |
+| S4 | builder | Implement the #1 optimization from S3 | S3 |
+| S5 | reviewer | Review the optimization PR: correctness, no regressions, benchmarks included | S4 |
+| S6 | evaluator | Run post-optimization eval. Compare latency and scores to S2 baseline. | S5 |
+| S7 | builder | Implement #2 optimization if S6 shows improvement (skip if regression) | S6 |
+| S8 | archivist | Archive: performance profile, optimizations applied, before/after metrics | S7 |
+
+**Gate rules:**
+- After S1: PROCEED if hot paths identified with measurable latency data
+- After S3: PROCEED if hypotheses include expected latency reduction
+- After S5: PROCEED if reviewer passes; ABORT if correctness issues
+- After S6: PROCEED if latency improved; ABORT if regression (revert S4)
+- After S7: same gate as S5-S6 pattern
+
+S1 and S2 run in parallel. S7 is conditional — skip if S6 shows regression.
