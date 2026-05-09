@@ -1,0 +1,42 @@
+{
+  "iteration": 1,
+  "skill": "pipeline",
+  "results": [
+    {
+      "eval_id": 1,
+      "eval_name": "easy-lint",
+      "difficulty": "easy",
+      "total_assertions": 5,
+      "passed": 5,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "notes": "Added mypy beyond ruff. Smart ABORT gate when already clean. Smoke test after fixes."
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "medium-auth",
+      "difficulty": "medium",
+      "total_assertions": 7,
+      "passed": 7,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "notes": "ABORT on false report. Builder includes regression test. Correct parallel batch."
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "hard-perf",
+      "difficulty": "hard",
+      "total_assertions": 7,
+      "passed": 7,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "notes": "Uses 0.8 threshold from config. Conditional S7. 8 steps total. Narrowing retry scope."
+    }
+  ],
+  "summary": {
+    "total_assertions": 19,
+    "total_passed": 19,
+    "total_failed": 0,
+    "pass_rate": 1.0
+  }
+}
