@@ -1333,6 +1333,7 @@ def cmd_agent(args: argparse.Namespace) -> int:
     timeout = getattr(args, "timeout", 600.0)
     model = _resolve_model(args)
     runner = _resolve_runner(args)
+    tmux_persist = getattr(args, "tmux_persist", False)
 
     result, code = _run(invoke_agent(
         role,
@@ -1342,6 +1343,7 @@ def cmd_agent(args: argparse.Namespace) -> int:
         dangerously_skip_permissions=True,
         model=model,
         runner_name=runner,
+        tmux_persist=tmux_persist,
     ))
     print(result)
     return code
@@ -1488,6 +1490,7 @@ def cmd_ceo(args: argparse.Namespace) -> int:
     branch = getattr(args, "branch", None)
     model = _resolve_model(args)
     runner_name = _resolve_runner(args)
+    tmux_persist = getattr(args, "tmux_persist", False)
 
     if mode == "research" and not research_ideation and not _has_research_target(project_path):
         print("Error: --mode research requires research_target in factory.md. "
@@ -1562,6 +1565,7 @@ def cmd_ceo(args: argparse.Namespace) -> int:
                 runner_name=runner_name,
                 model=model,
                 timeout=7200.0,
+                tmux_persist=tmux_persist,
             ))
             print(result)
             if code == 0:
@@ -2762,6 +2766,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Claude model for agent subprocess (default: FACTORY_MODEL env var, or claude CLI default)")
     p.add_argument("--runner", choices=["claude", "bob"], default=None,
                     help="CLI backend to use (default: FACTORY_RUNNER env var, or 'claude')")
+    p.add_argument("--tmux-persist", action="store_true", default=False,
+                    help="Open a tmux resume window after headless agent completion (claude only)")
     p.add_argument("--profile", default=None,
                     help="Credential profile from ~/.factory/config.toml")
 
@@ -2816,6 +2822,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="Claude model for agent subprocesses (default: FACTORY_MODEL env var, or claude CLI default)")
     p.add_argument("--runner", choices=["claude", "bob"], default=None,
                     help="CLI backend to use (default: FACTORY_RUNNER env var, or 'claude')")
+    p.add_argument("--tmux-persist", action="store_true", default=False,
+                    help="Open a tmux resume window after headless agent completion (claude only)")
     p.add_argument("--profile", default=None,
                     help="Credential profile from ~/.factory/config.toml")
 
