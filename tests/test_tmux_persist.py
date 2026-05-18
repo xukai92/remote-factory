@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from factory.runners._tmux_persist import (
     _SESSION_PREFIX,
     open_resume_window,
     tmux_available,
 )
+from factory.runners.claude import ClaudeRunner
 
 
 class TestTmuxAvailable:
@@ -62,6 +64,7 @@ class TestOpenResumeWindow:
                 ["tmux", "new-session", "-d", "-s", expected_session, "-n", expected_window,
                  "-x", "200", "-y", "50", resume_cmd],
                 cwd=cwd,
+                capture_output=True,
             )
 
     def test_creates_new_window_when_session_exists(self, tmp_path: Path) -> None:
@@ -92,6 +95,7 @@ class TestOpenResumeWindow:
             mock_run.assert_any_call(
                 ["tmux", "new-window", "-t", expected_session, "-n", expected_window, resume_cmd],
                 cwd=cwd,
+                capture_output=True,
             )
 
     def test_returns_false_on_failure(self, tmp_path: Path) -> None:
@@ -122,3 +126,91 @@ class TestOpenResumeWindow:
             cmd_args = new_window_call[0][0]
             # Window name should be role-first8chars
             assert "ceo-12345678" in cmd_args
+
+
+class TestClaudeRunnerTmuxPersist:
+    async def test_headless_passes_session_id_when_tmux_persist(self, tmp_path: Path) -> None:
+        runner = ClaudeRunner()
+        (tmp_path / ".factory").mkdir()
+
+        mock_proc = AsyncMock()
+        mock_proc.returncode = 0
+        mock_proc.stdout = AsyncMock()
+        mock_proc.stderr = AsyncMock()
+
+        with (
+            patch("factory.runners.claude.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch("factory.runners.claude.stream_subprocess", return_value=(b"output", b"")),
+            patch("factory.runners.claude.should_stream", return_value=False),
+            patch("factory.runners._tmux_persist.subprocess.run") as mock_tmux_run,
+        ):
+            mock_tmux_run.return_value = MagicMock(returncode=0)
+
+            stdout, code = await runner.headless(
+                prompt="test prompt",
+                task="test task",
+                cwd=tmp_path,
+                tmux_persist=True,
+            )
+
+            assert code == 0
+            create_call = patch("factory.runners.claude.asyncio.create_subprocess_exec")
+            exec_call_args = (
+                asyncio.create_subprocess_exec  # just to get at the mock
+            )
+            # Verify --session-id was in the command
+            call_args = mock_proc  # We need the actual call
+            # The subprocess was called with cmd as positional args
+            # Check via the mock that was used
+            from factory.runners.claude import asyncio as claude_asyncio
+
+            actual_call = claude_asyncio.create_subprocess_exec
+            cmd_args = actual_call.call_args[0]
+            assert "--session-id" in cmd_args
+
+    async def test_headless_calls_open_resume_on_success(self, tmp_path: Path) -> None:
+        runner = ClaudeRunner()
+        (tmp_path / ".factory").mkdir()
+
+        mock_proc = AsyncMock()
+        mock_proc.returncode = 0
+
+        with (
+            patch("factory.runners.claude.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch("factory.runners.claude.stream_subprocess", return_value=(b"output", b"")),
+            patch("factory.runners.claude.should_stream", return_value=False),
+            patch("factory.runners._tmux_persist.tmux_available", return_value=True) as mock_avail,
+            patch("factory.runners._tmux_persist.open_resume_window", return_value=True) as mock_open,
+        ):
+            await runner.headless(
+                prompt="test prompt",
+                task="test task",
+                cwd=tmp_path,
+                tmux_persist=True,
+            )
+
+            mock_avail.assert_called_once()
+            mock_open.assert_called_once()
+            call_args = mock_open.call_args[0]
+            assert call_args[2] == "unknown"  # role is the 3rd positional arg
+
+    async def test_headless_skips_tmux_on_failure(self, tmp_path: Path) -> None:
+        runner = ClaudeRunner()
+
+        mock_proc = AsyncMock()
+        mock_proc.returncode = 1
+
+        with (
+            patch("factory.runners.claude.asyncio.create_subprocess_exec", return_value=mock_proc),
+            patch("factory.runners.claude.stream_subprocess", return_value=(b"error", b"err")),
+            patch("factory.runners.claude.should_stream", return_value=False),
+            patch("factory.runners._tmux_persist.tmux_available") as mock_avail,
+        ):
+            await runner.headless(
+                prompt="test prompt",
+                task="test task",
+                cwd=tmp_path,
+                tmux_persist=True,
+            )
+
+            mock_avail.assert_not_called()

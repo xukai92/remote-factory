@@ -43,12 +43,14 @@ def open_resume_window(
         result = subprocess.run(
             ["tmux", "new-window", "-t", session, "-n", window, resume_cmd],
             cwd=cwd,
+            capture_output=True,
         )
     else:
         result = subprocess.run(
             ["tmux", "new-session", "-d", "-s", session, "-n", window,
              "-x", "200", "-y", "50", resume_cmd],
             cwd=cwd,
+            capture_output=True,
         )
 
     if result.returncode != 0:
