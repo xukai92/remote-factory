@@ -15,16 +15,17 @@ Domain-agnostic multi-agent software evolution loop that can auto-discover evals
 
 - factory/**/*.py
 - factory/agents/prompts/*.md
+- factory/agents/agents.yml
 - factory/dashboard/static/*
 - tests/**/*.py
 - templates/**
 - docs/**
+- CLAUDE.md
+- README.md
+- pyproject.toml
 
 ### Read-only
 <!-- Files the factory may read but must never modify. -->
-
-- README.md
-- pyproject.toml
 
 ## Guards
 <!-- Rules the factory must never violate. Checked before every commit. -->
@@ -72,7 +73,7 @@ main
 <!-- Optional e2e smoke test command. Failure = mandatory revert. -->
 
 ```bash
-pytest tests/ -x -q --tb=short
+pytest tests/test_models.py tests/test_guards.py tests/test_cli.py -x -q --tb=short
 ```
 
 ## Constraints

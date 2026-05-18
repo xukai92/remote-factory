@@ -76,10 +76,55 @@ class TestClaudeRunner:
                 call_args = mock_exec.call_args
                 cmd = call_args[0]
                 assert cmd[0] == "claude"
+                assert "--append-system-prompt" in cmd
                 assert "-p" in cmd
                 assert "--dangerously-skip-permissions" in cmd
                 assert "--model" in cmd
                 assert "claude-opus-4-7" in cmd
+
+    async def test_headless_separates_prompt_and_task(self, tmp_path: Path) -> None:
+        """headless() passes prompt via --append-system-prompt and task via -p as separate args."""
+        runner = ClaudeRunner()
+
+        with patch(
+            "factory.runners.claude.stream_subprocess", new_callable=AsyncMock
+        ) as mock_stream:
+            mock_stream.return_value = (b"ok", b"")
+
+            with patch(
+                "asyncio.create_subprocess_exec", new_callable=AsyncMock
+            ) as mock_exec:
+                mock_proc = AsyncMock()
+                mock_proc.returncode = 0
+                mock_exec.return_value = mock_proc
+
+                await runner.headless(
+                    prompt="You are the CEO.",
+                    task="Run the experiment",
+                    cwd=tmp_path,
+                )
+
+                cmd = mock_exec.call_args[0]
+                asp_idx = cmd.index("--append-system-prompt")
+                p_idx = cmd.index("-p")
+                assert cmd[asp_idx + 1] == "You are the CEO."
+                assert cmd[p_idx + 1] == "Run the experiment"
+
+    async def test_interactive_run_uses_append_system_prompt(self, tmp_path: Path) -> None:
+        """interactive_run() uses --append-system-prompt (not --system-prompt)."""
+        runner = ClaudeRunner()
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = type("Result", (), {"returncode": 0})()
+            runner.interactive_run(
+                prompt="You are the CEO.",
+                task="Start session",
+                cwd=tmp_path,
+            )
+
+            cmd = mock_run.call_args[0][0]
+            assert "--append-system-prompt" in cmd
+            assert "--system-prompt" not in cmd
 
 
 class TestBobRunner:
@@ -91,24 +136,23 @@ class TestBobRunner:
         monkeypatch.delenv("FACTORY_BOB_DRY_RUN", raising=False)
         assert is_dry_run() is False
 
-    def test_interactive_exec_dry_run(
+    def test_interactive_run_dry_run(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """interactive_exec prints dry-run message and exits."""
+        """interactive_run prints dry-run message and returns 0."""
         monkeypatch.setenv("FACTORY_BOB_DRY_RUN", "1")
         (tmp_path / ".factory").mkdir()
 
         runner = BobRunner()
 
-        with pytest.raises(SystemExit) as exc_info:
-            runner.interactive_exec(
-                prompt="Test prompt",
-                task="Test task",
-                cwd=tmp_path,
-                role="ceo",
-            )
+        code = runner.interactive_run(
+            prompt="Test prompt",
+            task="Test task",
+            cwd=tmp_path,
+            role="ceo",
+        )
 
-        assert exc_info.value.code == 0
+        assert code == 0
         captured = capsys.readouterr()
         assert "[DRY-RUN]" in captured.out
 
