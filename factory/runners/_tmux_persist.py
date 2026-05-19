@@ -63,11 +63,12 @@ async def run_in_tmux(
     exitcode_file = tmpdir / "exitcode"
     wrapper_script = tmpdir / "wrapper.sh"
 
-    cmd = ["claude", "--append-system-prompt", prompt, task]
+    cmd = ["claude", "--append-system-prompt", prompt]
     if dangerously_skip_permissions:
         cmd.append("--dangerously-skip-permissions")
     if model:
         cmd.extend(["--model", model])
+    cmd.append(task)
 
     claude_cmd = shlex.join(cmd)
     wrapper_script.write_text(
@@ -108,6 +109,8 @@ async def run_in_tmux(
         )
         await asyncio.wait_for(wait_proc.wait(), timeout=timeout)
     except asyncio.TimeoutError:
+        wait_proc.kill()
+        await wait_proc.wait()
         subprocess.run(
             ["tmux", "kill-window", "-t", f"{session}:{window}"],
             capture_output=True,

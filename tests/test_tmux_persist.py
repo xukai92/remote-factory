@@ -112,8 +112,8 @@ class TestRunInTmux:
             cmd = new_window_call[0][0]
             assert "new-window" in cmd
 
-    async def test_wrapper_script_contains_claude_command(self, tmp_path: Path) -> None:
-        """Verify the tmux command includes the wrapper script path."""
+    async def test_tmux_command_references_wrapper_script(self, tmp_path: Path) -> None:
+        """Verify the tmux new-session command references the wrapper script path."""
         project_path = tmp_path / "my-project"
         project_path.mkdir()
 
@@ -178,7 +178,8 @@ class TestRunInTmux:
                 MagicMock(returncode=0),  # kill-window
             ]
             wait_proc = AsyncMock()
-            wait_proc.wait = AsyncMock(side_effect=asyncio.TimeoutError)
+            wait_proc.wait = AsyncMock(side_effect=[asyncio.TimeoutError, 0])
+            wait_proc.kill = MagicMock()
             mock_async.return_value = wait_proc
 
             stdout, code = await run_in_tmux(

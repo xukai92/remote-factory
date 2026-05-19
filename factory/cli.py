@@ -2777,7 +2777,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--runner", choices=["claude", "bob"], default=None,
                     help="CLI backend to use (default: FACTORY_RUNNER env var, or 'claude')")
     p.add_argument("--tmux-persist", action="store_true", default=False,
-                    help="Open a tmux resume window after headless agent completion (claude only)")
+                    help="Run agent interactively in a tmux window instead of headless (claude only)")
     p.add_argument("--profile", default=None,
                     help="Credential profile from ~/.factory/config.toml")
 
@@ -2833,7 +2833,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--runner", choices=["claude", "bob"], default=None,
                     help="CLI backend to use (default: FACTORY_RUNNER env var, or 'claude')")
     p.add_argument("--tmux-persist", action="store_true", default=False,
-                    help="Open a tmux resume window after headless agent completion (claude only)")
+                    help="Run agent interactively in a tmux window instead of headless (claude only)")
     p.add_argument("--profile", default=None,
                     help="Credential profile from ~/.factory/config.toml")
 

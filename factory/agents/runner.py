@@ -115,7 +115,7 @@ async def invoke_agent(
         runner_name: CLI backend to use ("claude" or "bob"). Defaults to FACTORY_RUNNER env var.
         _track_failures: If True (default), track consecutive failures globally.
             Set to False when called from invoke_agents_parallel to avoid race conditions.
-        tmux_persist: If True, open a tmux resume window after agent completion.
+        tmux_persist: If True, run the agent interactively in a tmux window instead of headless.
 
     Returns (stdout, return_code).
 

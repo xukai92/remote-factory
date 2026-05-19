@@ -33,7 +33,7 @@ class Runner(Protocol):
             model: Optional model override.
             dangerously_skip_permissions: If True, skip permission prompts.
             role: Agent role name (used for logging and output prefixing).
-            tmux_persist: If True, open a tmux resume window after completion.
+            tmux_persist: If True, run the agent interactively in a tmux window instead of a headless subprocess.
 
         Returns:
             (stdout, return_code) tuple.

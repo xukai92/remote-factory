@@ -400,7 +400,7 @@ async def run_ceo_with_completion_guard(
         model: Optional model override.
         timeout: Timeout per CEO spawn in seconds.
         max_respawns: Max re-spawns (default from env or 5).
-        tmux_persist: If True, open a tmux resume window after each agent completion.
+        tmux_persist: If True, run agents interactively in tmux windows instead of headless.
 
     Returns:
         (final_output, exit_code)

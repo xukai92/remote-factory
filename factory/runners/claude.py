@@ -50,7 +50,7 @@ class ClaudeRunner:
             model: Optional model override.
             dangerously_skip_permissions: If True, skip permission prompts.
             role: Agent role (used for streaming prefix).
-            tmux_persist: If True, launch interactively in a tmux window instead.
+            tmux_persist: If True, run the agent interactively in a tmux window instead of a headless subprocess.
 
         Returns (stdout, return_code).
         """
