@@ -1333,7 +1333,7 @@ def cmd_agent(args: argparse.Namespace) -> int:
     timeout = getattr(args, "timeout", 600.0)
     model = _resolve_model(args)
     runner = _resolve_runner(args)
-    tmux_persist = getattr(args, "tmux_persist", False)
+    tmux_persist = _resolve_tmux_persist(args)
 
     result, code = _run(invoke_agent(
         role,
@@ -1490,7 +1490,7 @@ def cmd_ceo(args: argparse.Namespace) -> int:
     branch = getattr(args, "branch", None)
     model = _resolve_model(args)
     runner_name = _resolve_runner(args)
-    tmux_persist = getattr(args, "tmux_persist", False)
+    tmux_persist = _resolve_tmux_persist(args)
 
     if mode == "research" and not research_ideation and not _has_research_target(project_path):
         print("Error: --mode research requires research_target in factory.md. "
@@ -1614,6 +1614,16 @@ def _resolve_model(args: argparse.Namespace) -> str | None:
 
     flag = (getattr(args, "model", None) or "").strip() or None
     return resolve("model", cli_value=flag, env_var="FACTORY_MODEL")
+
+
+def _resolve_tmux_persist(args: argparse.Namespace) -> bool:
+    """Resolve tmux_persist: CLI flag > FACTORY_TMUX_PERSIST env var > config.toml > False."""
+    from factory.user_config import resolve
+
+    cli_flag = getattr(args, "tmux_persist", False)
+    cli_value = "true" if cli_flag else None
+    val = resolve("tmux_persist", cli_value=cli_value, env_var="FACTORY_TMUX_PERSIST", default="false")
+    return bool(val and val.lower() in ("1", "true", "yes"))
 
 
 def _resolve_runner(args: argparse.Namespace) -> str | None:

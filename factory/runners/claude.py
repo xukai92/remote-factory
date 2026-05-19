@@ -6,7 +6,6 @@ import asyncio
 import logging
 import os
 import subprocess
-import uuid
 from pathlib import Path
 
 from factory.runners._stream import should_stream, stream_subprocess
@@ -51,15 +50,22 @@ class ClaudeRunner:
             model: Optional model override.
             dangerously_skip_permissions: If True, skip permission prompts.
             role: Agent role (used for streaming prefix).
-            tmux_persist: If True, open a tmux resume window after completion.
+            tmux_persist: If True, launch interactively in a tmux window instead.
 
         Returns (stdout, return_code).
         """
-        session_id: str | None = None
-        cmd = ["claude", "--append-system-prompt", prompt, "-p", task]
         if tmux_persist:
-            session_id = str(uuid.uuid4())
-            cmd.extend(["--session-id", session_id])
+            from factory.runners._tmux_persist import run_in_tmux, tmux_available
+
+            if tmux_available():
+                return await run_in_tmux(
+                    prompt, task, cwd, role, _find_project_path(cwd),
+                    timeout=timeout, model=model,
+                    dangerously_skip_permissions=dangerously_skip_permissions,
+                )
+            logger.warning("tmux not available; falling back to headless")
+
+        cmd = ["claude", "--append-system-prompt", prompt, "-p", task]
         if dangerously_skip_permissions:
             cmd.append("--dangerously-skip-permissions")
         if model:
@@ -100,15 +106,6 @@ class ClaudeRunner:
 
         if proc.returncode != 0:
             logger.warning("ClaudeRunner exited with code %d: %s", proc.returncode, stderr[:200])
-
-        if proc.returncode == 0 and tmux_persist and session_id:
-            from factory.runners._tmux_persist import open_resume_window, tmux_available
-
-            if tmux_available():
-                project_path = _find_project_path(cwd)
-                open_resume_window(session_id, project_path, role, cwd)
-            else:
-                logger.warning("tmux not available; skipping persist window for %s", role)
 
         return stdout, proc.returncode or 0
 
