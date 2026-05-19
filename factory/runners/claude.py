@@ -60,7 +60,7 @@ class ClaudeRunner:
             if tmux_available():
                 return await run_in_tmux(
                     prompt, task, cwd, role, _find_project_path(cwd),
-                    timeout=timeout, model=model,
+                    model=model,
                     dangerously_skip_permissions=dangerously_skip_permissions,
                 )
             logger.warning("tmux not available; falling back to headless")

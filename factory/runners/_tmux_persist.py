@@ -7,6 +7,7 @@ import logging
 import re
 import shlex
 import subprocess
+import sys
 import tempfile
 import uuid
 from pathlib import Path
@@ -35,6 +36,9 @@ def _ensure_session(session: str) -> bool:
     ).returncode == 0
 
 
+_DEFAULT_TMUX_TIMEOUT = 86400.0  # 24 hours — interactive sessions are user-driven
+
+
 async def run_in_tmux(
     prompt: str,
     task: str,
@@ -42,7 +46,7 @@ async def run_in_tmux(
     role: str,
     project_path: Path,
     *,
-    timeout: float = 600.0,
+    timeout: float = _DEFAULT_TMUX_TIMEOUT,
     model: str | None = None,
     dangerously_skip_permissions: bool = True,
 ) -> tuple[str, int]:
@@ -100,6 +104,9 @@ async def run_in_tmux(
         return f"Failed to create tmux window for {role}", 1
 
     logger.info("tmux_launched session=%s window=%s role=%s", session, window, role)
+    print(f"Agent '{role}' launched in tmux session: {session}", file=sys.stderr)
+    print(f"  tmux attach -t {session}    # attach and interact", file=sys.stderr)
+    print("  /exit or Ctrl-d to finish   # factory resumes when you exit", file=sys.stderr)
 
     try:
         wait_proc = await asyncio.create_subprocess_exec(
