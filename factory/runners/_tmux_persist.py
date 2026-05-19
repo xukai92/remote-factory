@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 import shlex
 import subprocess
@@ -206,6 +207,9 @@ async def run_in_background(
 
     logger.info("Launching background agent: role=%s, cwd=%s", role, cwd)
 
+    env = dict(os.environ)
+    env["FACTORY_BG"] = "1"
+
     try:
         result = subprocess.run(
             cmd,
@@ -213,6 +217,7 @@ async def run_in_background(
             capture_output=True,
             text=True,
             timeout=30,
+            env=env,
         )
     except FileNotFoundError:
         logger.error("'claude' CLI not found on PATH")
