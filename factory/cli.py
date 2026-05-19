@@ -1395,7 +1395,7 @@ def cmd_ceo(args: argparse.Namespace) -> int:
 
     raw_path = getattr(args, "path", None)
     mode = getattr(args, "mode", "auto")
-    headless = getattr(args, "headless", False)
+    headless = getattr(args, "headless", False) or getattr(args, "bg", False)
     prompt_file = getattr(args, "prompt", None)
     focus = getattr(args, "focus", None)
     dir_name = getattr(args, "dir", None)
