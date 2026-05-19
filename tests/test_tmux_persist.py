@@ -300,25 +300,32 @@ class TestParseBgSessionId:
 
 
 class TestRunInBackground:
-    async def test_launches_and_returns_session_id(self, tmp_path: Path) -> None:
-        with patch("factory.runners._tmux_persist.subprocess.run") as mock_run:
+    async def test_launches_and_polls_until_done(self, tmp_path: Path) -> None:
+        with (
+            patch("factory.runners._tmux_persist.subprocess.run") as mock_run,
+            patch("factory.runners._tmux_persist._read_session_state") as mock_state,
+            patch("factory.runners._tmux_persist.asyncio.sleep", new_callable=AsyncMock),
+        ):
             mock_run.return_value = MagicMock(
                 returncode=0,
                 stdout="backgrounded · abc12345 · factory-researcher\n",
                 stderr="",
             )
+            mock_state.side_effect = [
+                {"state": "working"},
+                {"state": "done", "output": {"result": "Agent finished the task"}},
+            ]
 
             stdout, code = await run_in_background(
                 "system prompt", "do task", tmp_path, "researcher",
             )
 
             assert code == 0
-            assert "abc12345" in stdout
+            assert "Agent finished the task" in stdout
             cmd = mock_run.call_args[0][0]
             assert "--bg" in cmd
-            assert "--name" in cmd
 
-    async def test_returns_error_on_failure(self, tmp_path: Path) -> None:
+    async def test_returns_error_on_launch_failure(self, tmp_path: Path) -> None:
         with patch("factory.runners._tmux_persist.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=1,
@@ -333,13 +340,37 @@ class TestRunInBackground:
             assert code == 1
             assert "Failed" in stdout
 
-    async def test_passes_model_flag(self, tmp_path: Path) -> None:
-        with patch("factory.runners._tmux_persist.subprocess.run") as mock_run:
+    async def test_returns_failure_on_failed_state(self, tmp_path: Path) -> None:
+        with (
+            patch("factory.runners._tmux_persist.subprocess.run") as mock_run,
+            patch("factory.runners._tmux_persist._read_session_state") as mock_state,
+            patch("factory.runners._tmux_persist.asyncio.sleep", new_callable=AsyncMock),
+        ):
             mock_run.return_value = MagicMock(
                 returncode=0,
                 stdout="backgrounded · abc12345\n",
                 stderr="",
             )
+            mock_state.return_value = {"state": "failed", "output": {"result": "error occurred"}}
+
+            stdout, code = await run_in_background(
+                "prompt", "task", tmp_path, "researcher",
+            )
+
+            assert code == 1
+
+    async def test_passes_model_flag(self, tmp_path: Path) -> None:
+        with (
+            patch("factory.runners._tmux_persist.subprocess.run") as mock_run,
+            patch("factory.runners._tmux_persist._read_session_state") as mock_state,
+            patch("factory.runners._tmux_persist.asyncio.sleep", new_callable=AsyncMock),
+        ):
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout="backgrounded · abc12345\n",
+                stderr="",
+            )
+            mock_state.return_value = {"state": "done", "output": {"result": "ok"}}
 
             await run_in_background(
                 "prompt", "task", tmp_path, "researcher",
@@ -356,13 +387,13 @@ class TestRunInBackground:
         with patch(
             "factory.runners._tmux_persist.run_in_background",
             new_callable=AsyncMock,
-            return_value=("bg session started", 0),
+            return_value=("agent output", 0),
         ) as mock_bg:
             stdout, code = await runner.headless(
                 prompt="test", task="task", cwd=tmp_path,
                 background=True, role="researcher",
             )
 
-            assert stdout == "bg session started"
+            assert stdout == "agent output"
             assert code == 0
             mock_bg.assert_called_once()

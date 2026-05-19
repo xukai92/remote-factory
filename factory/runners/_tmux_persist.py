@@ -163,22 +163,38 @@ def _parse_bg_session_id(output: str) -> str | None:
     return None
 
 
+_BG_POLL_INTERVAL = 5.0
+_BG_TERMINAL_STATES = {"done", "completed", "failed", "stopped"}
+_CLAUDE_JOBS_DIR = Path("~/.claude/jobs").expanduser()
+
+
+def _read_session_state(session_id: str) -> dict | None:
+    state_file = _CLAUDE_JOBS_DIR / session_id / "state.json"
+    if not state_file.exists():
+        return None
+    try:
+        import json
+        return json.loads(state_file.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
 async def run_in_background(
     prompt: str,
     task: str,
     cwd: Path,
     role: str,
     *,
+    timeout: float = _DEFAULT_TMUX_TIMEOUT,
     model: str | None = None,
     dangerously_skip_permissions: bool = True,
 ) -> tuple[str, int]:
     """Launch claude as a background session via --bg (agent view).
 
-    The session runs autonomously in the background. The factory returns
-    immediately with the session ID. Use `claude agents`, `claude attach`,
-    or `claude logs` to interact with it.
+    The session is visible in `claude agents`. The factory polls for
+    completion and returns the output when the session finishes.
 
-    Returns (session_id_message, return_code).
+    Returns (stdout, return_code).
     """
     session_name = f"factory-{role}"
 
@@ -213,9 +229,24 @@ async def run_in_background(
         return f"Failed to launch background agent for {role}: {output[:200]}", 1
 
     print(f"Agent '{role}' launched in background: {session_id}", file=sys.stderr)
-    print("  claude agents             # view all sessions", file=sys.stderr)
-    print(f"  claude attach {session_id}    # attach to this session", file=sys.stderr)
-    print(f"  claude logs {session_id}      # view recent output", file=sys.stderr)
-    print(f"  claude stop {session_id}      # stop this session", file=sys.stderr)
+    print(f"  claude attach {session_id}    # attach to interact", file=sys.stderr)
 
-    return f"Background session started: {session_id} (role: {role})", 0
+    elapsed = 0.0
+    while elapsed < timeout:
+        await asyncio.sleep(_BG_POLL_INTERVAL)
+        elapsed += _BG_POLL_INTERVAL
+
+        state = _read_session_state(session_id)
+        if state and state.get("state") in _BG_TERMINAL_STATES:
+            session_output = ""
+            if isinstance(state.get("output"), dict):
+                session_output = state["output"].get("result", "")
+            elif isinstance(state.get("output"), str):
+                session_output = state["output"]
+
+            is_success = state["state"] in ("done", "completed")
+            return session_output, 0 if is_success else 1
+
+    logger.error("Background agent timed out after %ss: role=%s", timeout, role)
+    subprocess.run(["claude", "stop", session_id], capture_output=True)
+    return f"Agent timed out after {timeout}s", 1
