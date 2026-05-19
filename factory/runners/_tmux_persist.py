@@ -180,10 +180,9 @@ async def run_in_background(
 
     Returns (session_id_message, return_code).
     """
-    full_task = f"{prompt}\n\n---\n\n## Current Task\n\n{task}"
     session_name = f"factory-{role}"
 
-    cmd = ["claude", "--bg", "--name", session_name, "-p", full_task]
+    cmd = ["claude", "--bg", "--name", session_name, "--append-system-prompt", prompt, task]
     if dangerously_skip_permissions:
         cmd.append("--dangerously-skip-permissions")
     if model:
