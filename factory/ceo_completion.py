@@ -412,12 +412,20 @@ async def run_ceo_with_completion_guard(
     # Check escape hatch
     from factory.user_config import resolve
 
+    if background:
+        log.info("ceo_background_dispatch", reason="--bg: single dispatch, no respawn loop")
+        return await invoke_agent(
+            "ceo", initial_task, project_path,
+            timeout=timeout, model=model, runner_name=runner_name,
+            background=True,
+        )
+
     if resolve("ceo_respawn_disabled", env_var="FACTORY_CEO_RESPAWN_DISABLED") == "1":
         log.info("ceo_respawn_disabled", reason="FACTORY_CEO_RESPAWN_DISABLED=1")
         return await invoke_agent(
             "ceo", initial_task, project_path,
             timeout=timeout, model=model, runner_name=runner_name,
-            tmux_persist=tmux_persist, background=background,
+            tmux_persist=tmux_persist,
         )
 
     if max_respawns is None:
