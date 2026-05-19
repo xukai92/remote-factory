@@ -10,12 +10,37 @@ import structlog
 log = structlog.get_logger()
 
 
-def create_worktree(project_path: Path, base_branch: str = "main") -> tuple[Path, str]:
+def _detect_default_branch(project_path: Path) -> str:
+    """Detect the default branch (main, master, etc.) for the repo."""
+    result = subprocess.run(
+        ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+        cwd=project_path,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return result.stdout.strip().split("/")[-1]
+
+    for candidate in ("main", "master"):
+        check = subprocess.run(
+            ["git", "rev-parse", "--verify", candidate],
+            cwd=project_path,
+            capture_output=True,
+        )
+        if check.returncode == 0:
+            return candidate
+
+    return "main"
+
+
+def create_worktree(project_path: Path, base_branch: str | None = None) -> tuple[Path, str]:
     """Create an isolated worktree for a factory run.
 
     Returns (worktree_path, branch_name).
     """
     project_path = project_path.resolve()
+    if base_branch is None:
+        base_branch = _detect_default_branch(project_path)
     run_id = secrets.token_hex(4)
     branch = f"factory/run-{run_id}"
     factory_dir = project_path / ".factory"

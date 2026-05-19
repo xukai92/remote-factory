@@ -1534,7 +1534,7 @@ def cmd_ceo(args: argparse.Namespace) -> int:
     pending = read_pending(project_path)
     pending_ids = [m.id for m in pending]
 
-    base_branch = branch or "main"
+    base_branch = branch or None
     wt_path, wt_branch = create_worktree(project_path, base_branch)
 
     if interactive_existing:
@@ -2303,7 +2303,7 @@ def _run_single_cycle(
     pending = read_pending(project_path)
     pending_ids = [m.id for m in pending]
 
-    base_branch = branch or "main"
+    base_branch = branch or None
     wt_path, wt_branch = create_worktree(project_path, base_branch)
 
     try:
