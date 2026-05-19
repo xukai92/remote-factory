@@ -386,6 +386,7 @@ async def run_ceo_with_completion_guard(
     timeout: float = 3600.0,
     max_respawns: int | None = None,
     tmux_persist: bool = False,
+    background: bool = False,
 ) -> tuple[str, int]:
     """Spawn CEO; if it exits with planned work undone, re-spawn until done or cap hit.
 
@@ -401,6 +402,7 @@ async def run_ceo_with_completion_guard(
         timeout: Timeout per CEO spawn in seconds.
         max_respawns: Max re-spawns (default from env or 5).
         tmux_persist: If True, run agents interactively in tmux windows instead of headless.
+        background: If True, dispatch via claude --bg (agent view) and return immediately.
 
     Returns:
         (final_output, exit_code)
@@ -415,7 +417,7 @@ async def run_ceo_with_completion_guard(
         return await invoke_agent(
             "ceo", initial_task, project_path,
             timeout=timeout, model=model, runner_name=runner_name,
-            tmux_persist=tmux_persist,
+            tmux_persist=tmux_persist, background=background,
         )
 
     if max_respawns is None:
@@ -454,7 +456,7 @@ async def run_ceo_with_completion_guard(
         result, code = await invoke_agent(
             "ceo", task, project_path,
             timeout=timeout, model=model, runner_name=runner_name,
-            tmux_persist=tmux_persist,
+            tmux_persist=tmux_persist, background=background,
         )
         final_output = result
 

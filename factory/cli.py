@@ -1334,6 +1334,7 @@ def cmd_agent(args: argparse.Namespace) -> int:
     model = _resolve_model(args)
     runner = _resolve_runner(args)
     tmux_persist = _resolve_tmux_persist(args)
+    background = _resolve_background(args)
 
     result, code = _run(invoke_agent(
         role,
@@ -1344,6 +1345,7 @@ def cmd_agent(args: argparse.Namespace) -> int:
         model=model,
         runner_name=runner,
         tmux_persist=tmux_persist,
+        background=background,
     ))
     print(result)
     return code
@@ -1491,6 +1493,7 @@ def cmd_ceo(args: argparse.Namespace) -> int:
     model = _resolve_model(args)
     runner_name = _resolve_runner(args)
     tmux_persist = _resolve_tmux_persist(args)
+    background = _resolve_background(args)
 
     if mode == "research" and not research_ideation and not _has_research_target(project_path):
         print("Error: --mode research requires research_target in factory.md. "
@@ -1566,6 +1569,7 @@ def cmd_ceo(args: argparse.Namespace) -> int:
                 model=model,
                 timeout=7200.0,
                 tmux_persist=tmux_persist,
+                background=background,
             ))
             print(result)
             if code == 0:
@@ -1623,6 +1627,16 @@ def _resolve_tmux_persist(args: argparse.Namespace) -> bool:
     cli_flag = getattr(args, "tmux_persist", False)
     cli_value = "true" if cli_flag else None
     val = resolve("tmux_persist", cli_value=cli_value, env_var="FACTORY_TMUX_PERSIST", default="false")
+    return bool(val and val.lower() in ("1", "true", "yes"))
+
+
+def _resolve_background(args: argparse.Namespace) -> bool:
+    """Resolve background: CLI flag > FACTORY_BG env var > config.toml > False."""
+    from factory.user_config import resolve
+
+    cli_flag = getattr(args, "bg", False)
+    cli_value = "true" if cli_flag else None
+    val = resolve("bg", cli_value=cli_value, env_var="FACTORY_BG", default="false")
     return bool(val and val.lower() in ("1", "true", "yes"))
 
 
@@ -2778,6 +2792,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="CLI backend to use (default: FACTORY_RUNNER env var, or 'claude')")
     p.add_argument("--tmux-persist", action="store_true", default=False,
                     help="Run agent interactively in a tmux window instead of headless (claude only)")
+    p.add_argument("--bg", action="store_true", default=False,
+                    help="Dispatch agent as a background session via claude agent view (claude only)")
     p.add_argument("--profile", default=None,
                     help="Credential profile from ~/.factory/config.toml")
 
@@ -2834,6 +2850,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="CLI backend to use (default: FACTORY_RUNNER env var, or 'claude')")
     p.add_argument("--tmux-persist", action="store_true", default=False,
                     help="Run agent interactively in a tmux window instead of headless (claude only)")
+    p.add_argument("--bg", action="store_true", default=False,
+                    help="Dispatch agent as a background session via claude agent view (claude only)")
     p.add_argument("--profile", default=None,
                     help="Credential profile from ~/.factory/config.toml")
 

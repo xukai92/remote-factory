@@ -1,4 +1,4 @@
-"""Tmux persist — launch agents interactively in tmux with output capture."""
+"""Alternative agent execution modes — tmux windows and background sessions."""
 
 from __future__ import annotations
 
@@ -148,3 +148,75 @@ def _cleanup(tmpdir: Path) -> None:
         tmpdir.rmdir()
     except OSError:
         pass
+
+
+def _parse_bg_session_id(output: str) -> str | None:
+    """Parse session ID from `claude --bg` output.
+
+    Expected format: 'backgrounded · <hex_id> [· <name>]'
+    """
+    for line in output.splitlines():
+        if line.startswith("backgrounded"):
+            parts = line.split("·")
+            if len(parts) >= 2:
+                return parts[1].strip()
+    return None
+
+
+async def run_in_background(
+    prompt: str,
+    task: str,
+    cwd: Path,
+    role: str,
+    *,
+    model: str | None = None,
+    dangerously_skip_permissions: bool = True,
+) -> tuple[str, int]:
+    """Launch claude as a background session via --bg (agent view).
+
+    The session runs autonomously in the background. The factory returns
+    immediately with the session ID. Use `claude agents`, `claude attach`,
+    or `claude logs` to interact with it.
+
+    Returns (session_id_message, return_code).
+    """
+    full_task = f"{prompt}\n\n---\n\n## Current Task\n\n{task}"
+    session_name = f"factory-{role}"
+
+    cmd = ["claude", "--bg", "--name", session_name, "-p", full_task]
+    if dangerously_skip_permissions:
+        cmd.append("--dangerously-skip-permissions")
+    if model:
+        cmd.extend(["--model", model])
+
+    logger.info("Launching background agent: role=%s, cwd=%s", role, cwd)
+
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except FileNotFoundError:
+        logger.error("'claude' CLI not found on PATH")
+        return "Error: 'claude' CLI not found on PATH", 1
+    except subprocess.TimeoutExpired:
+        logger.error("claude --bg timed out during launch")
+        return "Error: claude --bg timed out during launch", 1
+
+    output = result.stdout + result.stderr
+    session_id = _parse_bg_session_id(output)
+
+    if result.returncode != 0 or not session_id:
+        logger.warning("Failed to launch background agent: %s", output[:200])
+        return f"Failed to launch background agent for {role}: {output[:200]}", 1
+
+    print(f"Agent '{role}' launched in background: {session_id}", file=sys.stderr)
+    print("  claude agents             # view all sessions", file=sys.stderr)
+    print(f"  claude attach {session_id}    # attach to this session", file=sys.stderr)
+    print(f"  claude logs {session_id}      # view recent output", file=sys.stderr)
+    print(f"  claude stop {session_id}      # stop this session", file=sys.stderr)
+
+    return f"Background session started: {session_id} (role: {role})", 0

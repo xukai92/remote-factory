@@ -199,6 +199,7 @@ class BobRunner:
         dangerously_skip_permissions: bool = True,
         role: str = "unknown",
         tmux_persist: bool = False,
+        background: bool = False,
     ) -> tuple[str, int]:
         """Run a headless Bob Shell invocation.
 
@@ -211,6 +212,8 @@ class BobRunner:
         """
         if tmux_persist:
             logger.warning("tmux_persist not supported with bob runner (no session resume)")
+        if background:
+            logger.warning("--bg not supported with bob runner (claude-only feature)")
         self._role = role
         project_path = self._find_project_path(cwd)
 

@@ -1,4 +1,4 @@
-"""Tests for the tmux persist module."""
+"""Tests for the tmux persist and background agent modules."""
 
 from __future__ import annotations
 
@@ -6,7 +6,9 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from factory.runners._tmux_persist import (
+    _parse_bg_session_id,
     _strip_ansi,
+    run_in_background,
     run_in_tmux,
     tmux_available,
 )
@@ -279,3 +281,88 @@ class TestClaudeRunnerTmuxPersist:
             )
 
             assert stdout == "normal"
+
+
+class TestParseBgSessionId:
+    def test_parses_standard_output(self) -> None:
+        output = "backgrounded · abc12345\n  claude agents\n"
+        assert _parse_bg_session_id(output) == "abc12345"
+
+    def test_parses_output_with_name(self) -> None:
+        output = "backgrounded · 2040abf1 · factory-test\n  claude agents\n"
+        assert _parse_bg_session_id(output) == "2040abf1"
+
+    def test_returns_none_on_no_match(self) -> None:
+        assert _parse_bg_session_id("error: something went wrong") is None
+
+    def test_returns_none_on_empty(self) -> None:
+        assert _parse_bg_session_id("") is None
+
+
+class TestRunInBackground:
+    async def test_launches_and_returns_session_id(self, tmp_path: Path) -> None:
+        with patch("factory.runners._tmux_persist.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout="backgrounded · abc12345 · factory-researcher\n",
+                stderr="",
+            )
+
+            stdout, code = await run_in_background(
+                "system prompt", "do task", tmp_path, "researcher",
+            )
+
+            assert code == 0
+            assert "abc12345" in stdout
+            cmd = mock_run.call_args[0][0]
+            assert "--bg" in cmd
+            assert "--name" in cmd
+
+    async def test_returns_error_on_failure(self, tmp_path: Path) -> None:
+        with patch("factory.runners._tmux_persist.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=1,
+                stdout="",
+                stderr="error: auth failed",
+            )
+
+            stdout, code = await run_in_background(
+                "prompt", "task", tmp_path, "builder",
+            )
+
+            assert code == 1
+            assert "Failed" in stdout
+
+    async def test_passes_model_flag(self, tmp_path: Path) -> None:
+        with patch("factory.runners._tmux_persist.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout="backgrounded · abc12345\n",
+                stderr="",
+            )
+
+            await run_in_background(
+                "prompt", "task", tmp_path, "researcher",
+                model="opus",
+            )
+
+            cmd = mock_run.call_args[0][0]
+            assert "--model" in cmd
+            assert "opus" in cmd
+
+    async def test_claude_runner_delegates_to_background(self, tmp_path: Path) -> None:
+        runner = ClaudeRunner()
+
+        with patch(
+            "factory.runners._tmux_persist.run_in_background",
+            new_callable=AsyncMock,
+            return_value=("bg session started", 0),
+        ) as mock_bg:
+            stdout, code = await runner.headless(
+                prompt="test", task="task", cwd=tmp_path,
+                background=True, role="researcher",
+            )
+
+            assert stdout == "bg session started"
+            assert code == 0
+            mock_bg.assert_called_once()
